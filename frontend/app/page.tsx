@@ -18,7 +18,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   // The URL to your Flask backend
-  const API_URL = 'http://localhost:8000/predict'; 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/predict';
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

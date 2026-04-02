@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.git/
+.gitignore
+.DS_Store
+.python-version
+
+# Large local/training artifacts not needed at build time
+*.ipynb
