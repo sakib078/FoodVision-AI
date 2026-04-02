@@ -170,7 +170,7 @@ def load_resources():
 
 def preprocess_image(image_bytes):
     """
-    Using ResNet50 preprocessing to match training
+    Using MobileNetV2 preprocessing to match training
     """
     img = Image.open(io.BytesIO(image_bytes))
     if img.mode != "RGB":
@@ -179,9 +179,16 @@ def preprocess_image(image_bytes):
     img = img.resize((224, 224))
     arr = tf.keras.preprocessing.image.img_to_array(img)
     arr = np.expand_dims(arr, axis=0)
-    arr = tf.keras.applications.resnet50.preprocess_input(arr)
+    arr = tf.keras.applications.mobilenet_v2.preprocess_input(arr)
     
     return arr
+
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({
+        'status': 'success',
+        'message': 'FoodVision API is running! Send image files via POST to the /predict endpoint.'
+    }), 200
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -265,4 +272,4 @@ def predict():
 
 if __name__ == '__main__':
     load_resources()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=8000)
