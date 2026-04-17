@@ -1,5 +1,7 @@
 flask
 flask-cors
-tensorflow
+gunicorn
+tensorflow[and-cuda] ; platform_system == "Linux"
+tensorflow ; platform_system != "Linux"
 numpy
 pillow
