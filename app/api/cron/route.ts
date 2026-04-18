@@ -3,11 +3,9 @@ import { NextResponse } from "next/server";
 const DEFAULT_TIMEOUT_MS = 15000;
 
 function resolveBackendBaseUrl(): string | null {
-  const direct = process.env.BACKEND_BASE_URL?.trim();
-  if (direct) return direct;
 
-  const fallback = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-  if (fallback) return fallback;
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (url) return url;
 
   return null;
 }
@@ -30,7 +28,7 @@ export async function GET(request: Request) {
   const backendBaseUrl = resolveBackendBaseUrl();
   if (!backendBaseUrl) {
     return NextResponse.json(
-      { ok: false, error: "BACKEND_BASE_URL or NEXT_PUBLIC_API_BASE_URL is not configured" },
+      { ok: false, error: "NEXT_PUBLIC_API_BASE_URL is not configured" },
       { status: 500 }
     );
   }
