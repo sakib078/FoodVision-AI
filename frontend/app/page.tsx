@@ -17,8 +17,7 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const liveIntervalRef = useRef<number | null>(null);
-  const liveRequestInFlightRef = useRef<boolean>(false);
+  const requestInFlightRef = useRef<boolean>(false);
 
   const [inputMode, setInputMode] = useState<InputMode>("upload");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -26,7 +25,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCameraLoading, setIsCameraLoading] = useState<boolean>(false);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [isLiveModeOn, setIsLiveModeOn] = useState<boolean>(false);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -36,7 +34,6 @@ export default function App() {
 
   useEffect(() => {
     return () => {
-      stopLiveInference();
       stopCamera();
     };
   }, []);
@@ -84,14 +81,6 @@ export default function App() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
-
-  const stopLiveInference = () => {
-    if (liveIntervalRef.current) {
-      window.clearInterval(liveIntervalRef.current);
-      liveIntervalRef.current = null;
-    }
-    setIsLiveModeOn(false);
   };
 
   const stopCamera = () => {
@@ -191,17 +180,18 @@ export default function App() {
     setResult(normalizeResult(data, source));
   };
 
-  const predictFromWebcam = async () => {
-    if (!isCameraActive || liveRequestInFlightRef.current) {
+  const captureAndPredict = async () => {
+    if (!isCameraActive || requestInFlightRef.current) {
       return;
     }
 
     const frameBlob = await captureFrameAsBlob();
     if (!frameBlob) {
+      setError("Failed to capture frame. Please try again.");
       return;
     }
 
-    liveRequestInFlightRef.current = true;
+    requestInFlightRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -209,31 +199,11 @@ export default function App() {
       await predictFromBlob(frameBlob, "webcam");
     } catch (err) {
       console.error("Webcam inference error:", err);
-      setError("Live inference failed. Check backend connectivity and try again.");
-      stopLiveInference();
+      setError("Prediction failed. Check backend connectivity and try again.");
     } finally {
-      liveRequestInFlightRef.current = false;
+      requestInFlightRef.current = false;
       setIsLoading(false);
     }
-  };
-
-  const toggleLiveInference = () => {
-    if (!isCameraActive) {
-      return;
-    }
-
-    if (isLiveModeOn) {
-      stopLiveInference();
-      return;
-    }
-
-    setError(null);
-    setIsLiveModeOn(true);
-
-    predictFromWebcam();
-    liveIntervalRef.current = window.setInterval(() => {
-      predictFromWebcam();
-    }, 1500);
   };
 
   const switchInputMode = (mode: InputMode) => {
@@ -242,7 +212,6 @@ export default function App() {
     setCameraError(null);
 
     if (mode === "upload") {
-      stopLiveInference();
       stopCamera();
     }
   };
@@ -386,13 +355,10 @@ export default function App() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={isCameraActive ? () => {
-                    stopLiveInference();
-                    stopCamera();
-                  } : startCamera}
+                  onClick={isCameraActive ? stopCamera : startCamera}
                   disabled={isCameraLoading}
                   className="w-full bg-slate-800 text-white text-sm font-semibold py-3 px-4 rounded-xl hover:bg-slate-900 disabled:opacity-60 transition"
                 >
@@ -401,24 +367,20 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={() => predictFromWebcam()}
+                  onClick={captureAndPredict}
                   disabled={!isCameraActive || isLoading}
-                  className="w-full bg-blue-600 text-white text-sm font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 disabled:opacity-60 transition"
+                  className="w-full bg-blue-600 text-white text-sm font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 disabled:opacity-60 transition flex justify-center items-center gap-2"
                 >
-                  Capture & Predict
-                </button>
-
-                <button
-                  type="button"
-                  onClick={toggleLiveInference}
-                  disabled={!isCameraActive}
-                  className={`w-full text-sm font-semibold py-3 px-4 rounded-xl transition disabled:opacity-60 ${isLiveModeOn ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"}`}
-                >
-                  {isLiveModeOn ? "Pause Live" : "Start Live"}
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white/20 border-t-white"></div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    'Capture & Predict'
+                  )}
                 </button>
               </div>
-
-              <p className="mt-3 text-xs text-slate-500">Live mode samples one frame every ~1.5 seconds.</p>
             </>
           )}
         </div>

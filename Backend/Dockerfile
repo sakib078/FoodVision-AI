@@ -5,7 +5,7 @@ WORKDIR /app
 ENV UV_LINK_MODE=copy
 ARG TF_FLAVOR=cpu
 
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock ./
 RUN pip install --no-cache-dir uv \
 	&& if [ "$TF_FLAVOR" != "cpu" ] && [ "$TF_FLAVOR" != "gpu" ]; then echo "Invalid TF_FLAVOR: $TF_FLAVOR" && exit 1; fi \
 	&& uv sync --no-dev --python 3.13 --extra "$TF_FLAVOR"

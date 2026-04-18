@@ -1,133 +1,149 @@
-# Render + Docker Deployment Guide
+# FoodVision Production Guide (Vercel + Render Docker Backend)
 
-**Date:** April 13, 2026
+Date: April 17, 2026
 
 ## Goal
-- Deploy FoodVision backend and frontend using Render with Docker.
-- Keep deployment simple, free-tier friendly, and ready for MVP usage.
+- Frontend on Vercel from your existing GitHub repository.
+- Backend on Render using Docker runtime.
+- Keep free-tier behavior predictable with keep-alive strategy.
 
-## Architecture
-- Backend service on Render from [Backend/Dockerfile](Backend/Dockerfile)
-- Frontend service on Render from [frontend/Dockerfile](frontend/Dockerfile)
-- Frontend calls backend using environment variable `NEXT_PUBLIC_API_BASE_URL`
-
----
-
-## Repo Files Used
-- [render.yaml](render.yaml): Render Blueprint for both services
-- [Backend/Dockerfile](Backend/Dockerfile): Gunicorn backend image
-- [frontend/Dockerfile](frontend/Dockerfile): Next.js production image
-- [frontend/app/page.tsx](frontend/app/page.tsx): API URL reads from env var
+## Final Architecture
+- Frontend: Vercel (Next.js, root directory: `frontend`).
+- Backend: Render Web Service (Docker, root directory: `Backend`).
+- Frontend calls backend using `NEXT_PUBLIC_API_BASE_URL`.
 
 ---
 
-## Step 1: Push to GitHub
-1. Commit your current code.
-2. Push to GitHub.
-3. Confirm these folders exist in repo root:
-   - `Backend`
-   - `frontend`
+## 1. Keep/Remove Files for This Setup
+
+Keep:
+- `Backend/Dockerfile` (required for Render Docker runtime backend)
+- `render.yaml` (optional but recommended for reproducible Render setup)
+
+Not required:
+- `frontend/Dockerfile` (not used when frontend is deployed to Vercel normally)
 
 ---
 
-## Step 2: Create Services on Render
-### Option A (Recommended): Blueprint
-1. Open Render dashboard.
-2. Click New > Blueprint.
-3. Connect your GitHub repo.
-4. Render reads [render.yaml](render.yaml) and creates two services:
-   - `foodvision-backend`
-   - `foodvision-frontend`
+## 2. Render Backend (Docker Runtime)
 
-### Option B: Manual Setup
-Create two Render Web Services from the same repo.
+### Option A: Deploy with render.yaml (recommended)
 
-Backend service settings:
-- Runtime: Docker
-- Root Directory: `Backend`
-- Dockerfile Path: `./Dockerfile`
-- Plan: Free
-- Health Check Path: `/health`
+Your `render.yaml` now contains only backend Docker service, which is correct for this architecture.
 
-Frontend service settings:
-- Runtime: Docker
-- Root Directory: `frontend`
-- Dockerfile Path: `./Dockerfile`
-- Plan: Free
+Steps:
+1. Push latest code to GitHub.
+2. In Render, create a Blueprint deployment from repo.
+3. Confirm service settings:
+   - Type: Web Service
+   - Runtime: Docker
+   - Root directory: `Backend`
+   - Dockerfile path: `./Dockerfile`
+   - Health check path: `/health`
+4. Deploy.
 
----
+### Option B: Deploy manually in Render UI
 
-## Step 3: Set Environment Variables
-Backend service:
-- `PYTHONUNBUFFERED=1`
+1. New Web Service -> connect repo.
+2. Runtime: Docker.
+3. Root Directory: `Backend`.
+4. Dockerfile Path: `./Dockerfile`.
+5. Plan: Free (or paid to avoid sleep).
+6. Deploy.
 
-Frontend service:
-- `NEXT_PUBLIC_API_BASE_URL=https://<your-backend-service>.onrender.com`
+Verify backend:
 
-Important:
-- Replace `<your-backend-service>` with your real backend Render service URL.
-- Redeploy frontend after updating the env var.
+```bash
+curl https://YOUR_RENDER_BACKEND_URL/health
+```
 
 ---
 
-## Step 4: Verify Backend
-Open in browser:
-- `https://<your-backend-service>.onrender.com/health`
+## 3. Vercel Frontend (GitHub Repo)
 
-Expected:
-- HTTP 200 response
-- Health payload from backend
+1. Import the same repository in Vercel.
+2. Set Root Directory to `frontend`.
+3. Framework preset: Next.js.
+4. Add environment variables in Vercel project:
 
----
+- `NEXT_PUBLIC_API_BASE_URL=https://YOUR_RENDER_BACKEND_URL`
+- `NEXT_PUBLIC_KEEP_ALIVE_ENABLED=true`
+- `NEXT_PUBLIC_KEEP_ALIVE_INTERVAL_MS=840000`
 
-## Step 5: Verify Frontend to Backend Flow
-1. Open your frontend Render URL.
-2. Upload an image.
-3. Run prediction.
-4. Confirm response appears in UI.
-
-If it fails:
-- Verify `NEXT_PUBLIC_API_BASE_URL` is correct.
-- Check backend logs in Render dashboard.
-- Check frontend logs in Render dashboard.
+5. Deploy.
 
 ---
 
-## Step 6: CORS Check
-If browser shows CORS errors:
-1. Add frontend Render domain to backend allowed origins.
-2. Redeploy backend.
-3. Retry from frontend.
+## 4. Free Tier Sleep: What Actually Works
+
+You already asked for frontend-triggered keep-alive. This repo now includes that behavior.
+
+Current behavior:
+- Browser pings backend `/health` every configured interval.
+- Ping runs in production when the page is open and visible.
+
+Important limitation:
+- If no one has your site open, browser-based keep-alive cannot run.
+
+Recommended stronger keep-awake path:
+- Use an external monitor (UptimeRobot, Better Stack, cron-job.org)
+- Ping:
+
+```text
+https://YOUR_RENDER_BACKEND_URL/health
+```
+
+- Suggested interval: every 10-14 minutes.
 
 ---
 
-## Step 7: Ongoing Deploy Workflow
-1. Push changes to GitHub.
-2. Render auto-deploys (if auto-deploy enabled).
-3. For urgent fixes, trigger manual deploy in Render.
+## 5. CORS + API Validation
+
+If frontend loads but prediction fails:
+
+1. Confirm Vercel env var points to Render backend URL.
+2. Confirm backend CORS allows your Vercel domain.
+3. Test backend directly:
+
+```bash
+curl https://YOUR_RENDER_BACKEND_URL/health
+curl -X POST https://YOUR_RENDER_BACKEND_URL/predict
+```
 
 ---
 
-## Step 8: Rollback Plan
-1. Open service in Render.
-2. Go to Deploys.
-3. Select last healthy deploy.
-4. Click Rollback.
+## 6. Update Workflow
+
+Backend updates:
+1. Push to GitHub.
+2. Render auto-deploys backend.
+3. Verify `/health` and one `/predict` request.
+
+Frontend updates:
+1. Push to GitHub.
+2. Vercel auto-deploys frontend.
+3. Verify API requests in browser network tab.
+
+If backend URL changes, update `NEXT_PUBLIC_API_BASE_URL` in Vercel and redeploy.
 
 ---
 
-## Free Tier Notes
-- Render free services can sleep after inactivity (cold starts).
-- First request after sleep may be slow.
-- This setup is CPU-only on free tier.
-- GPU deployment requires a paid GPU platform.
+## 7. Fly.io 7-Day Trial (Fallback)
+
+Use Fly.io as a short validation environment only:
+- Keep frontend on Vercel.
+- Deploy backend on Fly.io for performance comparison.
+
+Because trial is short, do not treat it as stable production unless you plan paid continuation.
 
 ---
 
-## Quick Checklist
-- [ ] Repo pushed to GitHub
-- [ ] Backend service created on Render
-- [ ] Frontend service created on Render
-- [ ] `NEXT_PUBLIC_API_BASE_URL` set in frontend
-- [ ] Backend `/health` returns 200
-- [ ] Frontend prediction works end to end
+## 8. Quick Checklist
+
+- Backend deployed on Render Docker runtime.
+- Backend `/health` returns healthy.
+- Frontend deployed on Vercel from GitHub.
+- `NEXT_PUBLIC_API_BASE_URL` points to backend.
+- Keep-alive env vars set in Vercel.
+- CORS allows Vercel frontend origin.
+- Webcam + upload prediction flows tested on desktop and mobile.
