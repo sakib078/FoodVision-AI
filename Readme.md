@@ -22,7 +22,7 @@ FoodVision AI leverages a fine-tuned **MobileNetV2** architecture to provide hig
     * Adam Optimizer with a reduced learning rate ($1 \times 10^{-4}$) for stable convergence.
     * Data Augmentation (Random Rotation, Flip) to prevent overfitting.
 
-### ⚙️ Backend (Flask)
+### ⚙️ Backend (Flask, Gunicorn production server)
 * **Language:** Python
 * **Package Manager:** `uv`
 * **Core Libraries:** TensorFlow, NumPy, Pillow, Flask-CORS.
@@ -39,20 +39,9 @@ FoodVision AI leverages a fine-tuned **MobileNetV2** architecture to provide hig
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
-* Python 3.9+
 * Node.js & npm
-* `uv` (Python package manager)
 
-### 1. Backend Setup
-```bash
-cd Backend
-# Create pyproject.toml and install dependencies
-uv sync
-# Ensure model.h5 and classes.txt are in the Backend folder
-uv run main.py
-```
-
-### 2. Frontend Setup
+### 1. Frontend Setup
 ```bash
 # Navigate to frontend directory
 npm install
@@ -97,24 +86,13 @@ The current version of the model utilizes a fine-tuned MobileNetV2 architecture.
 * **Final Training Accuracy:** 80.1%
 * **Loss:** 0.71
 
-### Performance Visuals
-| Accuracy & Loss Curves | Confusion Matrix |
-| :---: | :---: |
-| ![Training History](./evaluation/model-version0.1/training_history.png) | ![Confusion Matrix](./evaluation/model-version0.1/confusion_matrix.png) |
-
 > **Analysis:** The model shows strong convergence. The slight gap between training and validation accuracy (~4%) indicates a well-regularized model that generalizes well to unseen data.
 
 ---
 
 ## 📁 Project Structure
 ```text
-FoodVision/
-├── Backend/
-│   ├── main.py            # Flask Server & Inference Logic
-│   ├── model.h5           # Trained Keras Model
-│   ├── classes.txt        # 101 Food Labels
-│   └── pyproject.toml     # UV Dependencies
-├── Frontend/
+├── moo-frontend/
 │   ├── src/
 │   │   └── app/page.tsx   # React Dashboard
 │   └── tailwind.config.js # Styling Configuration
