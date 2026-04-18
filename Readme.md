@@ -59,6 +59,33 @@ npm install
 npm run dev
 ```
 
+### 3. Production Scheduler (GitHub Actions)
+This project uses GitHub Actions instead of Vercel Cron for frequent keep-alive calls.
+
+Create these repository settings in GitHub:
+
+1. Repository Variable `SCHEDULE`
+```json
+{
+    "timeZone": "UTC",
+    "schedules": [
+        {
+            "name": "backend ping",
+            "days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+            "startHour": 0,
+            "endHour": 24
+        }
+    ]
+}
+```
+
+2. Repository Secret `CRON_URL`
+- Set to your deployed backend health endpoint, for example: `https://your-backend-domain/health`
+
+Workflow file: `.github/workflows/cron-healthcheck.yml`
+- Trigger: every 10 minutes (`*/10 * * * *`) and manual run (`workflow_dispatch`)
+- Scheduler output used: `BACKEND_PING`
+
 ---
 
 ## 📊 Model Evaluation (v0.1)

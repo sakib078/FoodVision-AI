@@ -1,0 +1,33 @@
+name: Backend Health Scheduler
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Evaluate schedule variable
+        id: scheduler
+        uses: JustinDFuller/github-action-scheduler@v0
+        with:
+          config: ${{ vars.SCHEDULE }}
+
+      - name: Ping protected cron endpoint
+        if: ${{ steps.scheduler.outputs.BACKEND_PING == 'true' }}
+        env:
+          CRON_URL: ${{ secrets.CRON_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_URL}" ]; then
+            echo "CRON_URL secret is not set"
+            exit 1
+          fi
+
+          curl --fail --show-error --silent \
+            "${CRON_URL}"
